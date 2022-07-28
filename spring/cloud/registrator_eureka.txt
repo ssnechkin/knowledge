@@ -1,0 +1,170 @@
+Регистратор сервисов для балансировщика
+
+1. Сервер
+=========
+	<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-actuator -->
+	<dependency>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-actuator</artifactId>
+		<version>2.7.2</version>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-netflix-eureka-server -->
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+		<version>3.1.3</version>
+	</dependency>
+
+	В main добавить аннотацию
+		@EnableEurekaServer
+	
+	application.properties
+	-----------------------
+		spring.application.name=service-name_eureka-discovery-server
+		
+    Настройки для профилей:
+		
+		Для одного экземпляра сервера (Если в active profile установлено standalone)
+			application-standalone.properties
+			-----------------------
+				server.port=8001
+				eureka.client.service-url.defaultZone=http://localhost:8001/eureka
+				# Нужна ли регистрация на эврике
+				eureka.client.register-with-eureka=false
+				# Нужен ли кэш
+				eureka.client.fetch-registry=false
+				eureka.server.wait-time-in-ms-when-sync-empty=5
+				# Количество попыток для синхронизации
+				eureka.server.registry-sync-retries=3
+				# Потоки для синхронизации. Если 0 то будет 20
+				eureka.server.max-threads-for-peer-replication=0
+
+		Для трех экземпляров сервера
+			application-node1.properties
+			-----------------------
+				server.port=8001
+				eureka.client.service-url.defaultZone=http://localhost:8002/eureka, http://localhost:8003/eureka
+				# Определение инстансов (запущенных экземпляров текущего сервера)
+				eureka.instanse.instanse-id=${spring.application.name}:${server.port}			
+				eureka.server.wait-time-in-ms-when-sync-empty=0
+				# Время для актуализации
+				eureka.server.eviction-interval-timer-in-ms=15000
+				# Время ожидания после запроса синхронизации
+				eureka.instanse.leaseRenewalIntervalInSeconds=30
+				# Время между запросами синхронизации
+				eureka.instanse.leaseExpirationOurationInSeconds=30
+				
+			application-node2.properties
+			-----------------------
+				server.port=8002
+				eureka.client.service-url.defaultZone=http://localhost:8001/eureka, http://localhost:8003/eureka
+				# Определение инстансов (запущенных экземпляров текущего сервера)
+				eureka.instanse.instanse-id=${spring.application.name}:${server.port}			
+				eureka.server.wait-time-in-ms-when-sync-empty=0
+				# Время для актуализации
+				eureka.server.eviction-interval-timer-in-ms=15000
+				# Время ожидания после запроса синхронизации
+				eureka.instanse.leaseRenewalIntervalInSeconds=30
+				# Время между запросами синхронизации
+				eureka.instanse.leaseExpirationOurationInSeconds=30
+				
+			application-node3.properties
+			-----------------------
+				server.port=8002
+				eureka.client.service-url.defaultZone=http://localhost:8001/eureka, http://localhost:8002/eureka
+				# Определение инстансов (запущенных экземпляров текущего сервера)
+				eureka.instanse.instanse-id=${spring.application.name}:${server.port}			
+				eureka.server.wait-time-in-ms-when-sync-empty=0
+				# Время для актуализации
+				eureka.server.eviction-interval-timer-in-ms=15000
+				# Время ожидания после запроса синхронизации
+				eureka.instanse.leaseRenewalIntervalInSeconds=30
+				# Время между запросами синхронизации
+				eureka.instanse.leaseExpirationOurationInSeconds=30
+
+
+2. Клиент
+==========
+	<!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-netflix-eureka-client -->
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		<version>3.1.3</version>
+	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-openfeign -->
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter-openfeign</artifactId>
+		<version>3.1.3</version>
+	</dependency>
+
+	application.properties
+	-----------------------
+		spring.application.name=service-name
+		server.port=7001
+		# Адрес сервера регистрации
+		eurika.client.service-url.defaultZone=http://localhost:8001/eurika
+		# Нужна ли регистрация в эврике
+		eurika.client.register-with-eureka=true
+		# Нужен ли кэш
+		eurika.client.fetch-registry=true
+		# Время для актуализации
+		eureka.server.eviction-interval-timer-in-ms=15000
+		# Время ожидания после запроса синхронизации
+		eureka.instanse.leaseRenewalIntervalInSeconds=30
+		# Время между запросами синхронизации
+		eureka.instanse.leaseExpirationOurationInSeconds=30
+		# Определение инстансов (запущенных экземпляров текущего клиента)
+		eureka.instanse.instanse-id=${spring.application.name}:${server.port}
+		# Префелирование ip адрес
+		eureka.instanse.prefer-ip-address=true
+		use.fign.client=true
+	
+	В main добавить аннотацию
+	@EnableEurekaClient
+		
+	Для получения параметров из регистратора надо
+		Подключить параметры
+			@Qualifier("eurikaClient")
+			@Autowired
+			private EurikaClient eurikaClient;
+			
+			@Value("${use.eurika.client:false}")
+			private boolean useEurikaClient;
+			
+			@Value("${use.ribbon.backed.rest.tempalte:false}")
+			private boolean useRibbonBackedRestTempalte;
+			
+			@Value("true")
+			private boolean useFeignClient;
+	
+
+	// Получить ссылку url сервиса через Эврику
+		// Получить сервис
+		Application app = eurikaClient.getApplication("ИМЯ СЕРВИСА");
+		// Получить список инстансов сервиса
+		List<InstanceInfo> instances = app.getInstances();
+		// Получить url сервиса
+		instances.get(0).getHomePageUrl();
+	
+	// Получить ссылку url сервиса через ribbon (Он выбирает сам наименее загруженный экземляр)
+		// Создать bean
+		@LoadBalanced
+		@Bean
+		public RestTemplate getRestTemplate() {
+			return new RestTemplate();
+		}
+		// Через getRestTemplate() сделать запрос
+		http://ИМЯ_СЕРВИСА/...
+	
+	// Вызвать функцию стороннего сервиса через fiegnProxy
+		// Спример вызова сервиса с именем currency-conversion
+		CurrencyConversionVO converter = feignProxy.convertCurrency(baseCurrent, toCurrency);
+		Что бы это заработало надо добавить аннотацию @EnableFeignClients(basePackages = "dic.retfare.feign") - путь к ридектории с интерфейсом 
+		у которого есть аннотация @FeignClient(name = "currency-conversion") - имя сервиса
+		и метод с аннотацией @GetMappling(value = "/from/{from}/to/to/{to}")
+		public CurrencyConversionVO convertCurrency(@PathVariable String from, @PathVariable String to);
+		В вызываемом сервисе обязательно должен быть реализован контроллер с методом описанном ка в этом интерфейсе
+			

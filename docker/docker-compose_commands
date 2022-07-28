@@ -1,0 +1,7 @@
+// rm all process
+docker-compose down -v
+
+// re build recreate
+docker-compose up --build --force-recreate
+
+

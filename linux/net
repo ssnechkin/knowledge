@@ -1,0 +1,2 @@
+netstat -plten |grep java
+kill -9 PID

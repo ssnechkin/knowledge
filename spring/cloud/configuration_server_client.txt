@@ -1,0 +1,97 @@
+1. Конфигурации сервисов в GIT
+===========================
+	В GIT создать новый репозиторий 
+	перенести в него файлы конфигурации из сервисов
+
+
+
+2. CONFIG-SERVER
+==============
+	<!-- Делает сервер конфигурации -->
+	<!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-config-server -->
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-config-server</artifactId>
+		<version>3.1.3</version>
+	</dependency>
+
+	<!-- Делает автообновление конфигов без рестарта сервиса -->
+	<!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-bus-amqp -->
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter-bus-amqp</artifactId>
+		<version>3.1.2</version>
+	</dependency>
+
+
+	В main добавить @EnableConfigServer
+
+	application.properties
+	-----------------------
+		spring.application.name=config-server
+		server.port=5000
+		//Ссылка на репозиторий с конфигурациями
+		spring.cloud.config.server.git.uri=https://github.com/realcorwin/config-repo/
+		// {application} - поиск по spring.application.name в сервисах
+		spring.cloud.config.server.git.search-paths={application}
+		
+		// Доп
+		spring.cloud.config.server.git.default-label=main
+		spring.rabbitmq.host=localhost
+		spring.rabbitmq.port=5672
+		spring.rabbitmq.username=guest
+		spring.rabbitmq.password=guest
+
+	Конфигурация будет доступна по url http://localhost:5000/имя-сервиса/default
+
+
+
+3. CONFIG-CLIENT (SERVICE)
+==========================
+	<!-- Нужен для чтения конфигурации из сервера конфигурации -->
+	<!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-config -->
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter-config</artifactId>
+		<version>3.1.3</version>
+	</dependency>
+
+	<!-- Нужен для обновления конфигурации сервером конфигурации, если конфигурация изменилась -->
+	<!-- вызывается url /refresh -->
+	<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-actuator -->
+	<dependency>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-actuator</artifactId>
+		<version>2.7.2</version>
+	</dependency>
+
+	application.properties
+	-----------------------
+		spring.application.name=service-name
+		server.port=7101
+		spring.cloud.config.uri=http://localhost:5000
+		
+		# Для новой версии спринга
+		spring:
+		  config:
+		    import: optional:configserver:http://localhost:5000
+
+	Для автообновления параметров надо:
+		Вариант 1
+			В рест контроллере добавить
+				@ConfigurationProperties(prefux="Наименование префикса в файле конфигурации")
+			Для обновления через актуатор добавить в том же контроллере метод получения параметров
+				@RequestMapping("/lucky-word")
+				public String showLuckiWord(){
+					return preamble + luckyWord;	
+				}
+		Вариант 2
+			(Через прокси)В рест контроллере добавить
+			@RefreshScope
+			Пометить параметры/переменные аннотацией
+				@Value("$(wordConfig.lucky-word)") String luckyWord;
+			Для обновления через актуатор добавить в том же контроллере метод получения параметров
+				@RequestMapping("/lucky-word")
+				public String showLuckiWord(){
+					return preamble + luckyWord;	
+				}
