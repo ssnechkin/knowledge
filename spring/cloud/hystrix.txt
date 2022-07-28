@@ -1,0 +1,53 @@
+	Аналог @Retryable
+	
+	<!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-netflix-hystrix -->
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+	</dependency>
+
+	Обернуть метод аннотацией
+		// Устанавливает время ожидания ответа функции
+		@HystrixCommand(commandProperties= {
+			@HystrixProperty(name="execution.isolation.thread/timeoutInMilliseconds", value="7000")
+		})
+		public RetFare getRentFareByAnimal(String animal) {
+			return null;
+		}
+		
+		// buildFallbachRents - вызываемая функция (заглушки) при получении ошибки
+		// Для ключа getRentsKey можно установить время ожидания в проперти
+		// hystrix.command.getRentsKey.execution.isolation.thread.timeoutIntMilliseconds=3000
+		@HystrixCommand(commandKey="getRentsKey", fallbackMethod="buildFallbachRents")
+		public RetFare getRentFareByAnimal(String animal) {
+			return null;
+		}
+		
+		Другие параметры конфигурации для ключа getRentsKey:
+			# Окно проверки метода
+			#hystrix.command.getRentsKey.metrix.rollingStats.timeoutIntMilliseconds=15000
+			# Минимальное количество запросов полученных в период заданного временного окна
+			#hystrix.command.getRentsKey.circuitBreaker.requestValumeThreshold=10
+			# Процент неуспешных запросов от минимального числа запросов
+			#hystrix.command.getRentsKey.circuitBreaker.errorThresholdPercentage=50
+			# Время ожидания перед вызовом метода заглушки указанного в @HystrixCommand(commandKey="getRentsKey", fallbackMethod="ТУТ") 
+			#hystrix.command.getRentsKey.circuitBreaker.sleepWindowInMilliseconds=6
+		
+		Пример настройки по умолчанию для всех ключей:
+			hystrix:
+			  command:
+			    defailt:
+				  execution:
+				    isolation:
+					  thread:
+					    timeoutInMilliseconds: 3000
+						
+Для работы Hystrix и Mongock
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+		<exclusions>
+			<groupId>org.ow2.asm</groupId>
+			<artifactId>asm</artifactId>
+		</exclusions>
+	</dependency>
